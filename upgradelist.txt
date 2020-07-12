@@ -1,0 +1,20 @@
+
+planet#: 1, level: 15, Storage: 35000, planet_type: desert, tier: 1, credits: 256, cost to upgrade: 125000
+planet#: 2, level: 15, Storage: 35000, planet_type: fire, tier: 1, credits: 330, cost to upgrade: 125000
+planet#: 3, level: 15, Storage: 35000, planet_type: water, tier: 1, credits: 348, cost to upgrade: 125000
+planet#: 4, level: 15, Storage: 35000, planet_type: terran, tier: 1, credits: 421, cost to upgrade: 125000
+planet#: 5, level: 16, Storage: 45000, planet_type: gas, tier: 2, credits: 475, cost to upgrade: 150000
+planet#: 6, level: 17, Storage: 65000, planet_type: terran, tier: 3, credits: 500, cost to upgrade: 175000
+planet#: 7, level: 18, Storage: 90000, planet_type: gas, tier: 4, credits: 557, cost to upgrade: 200000
+planet#: 8, level: 18, Storage: 90000, planet_type: fire, tier: 3, credits: 423, cost to upgrade: 200000
+--------------------------------------------------
+Your current cap: 430000
+--------------------------------------------------
+Your desired cap: 500000
+--------------------------------------------------
+('planet', 7, '--->', 19)
+('planet', 7, '--->', 20)
+--------------------------------------------------
+'Your final storage is: 510000
+--------------------------------------------------
+The 7 planet was upgrade to lvl 20
