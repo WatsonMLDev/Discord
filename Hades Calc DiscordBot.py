@@ -1,8 +1,9 @@
-import functools 
+import functools
 import operator
-import sqlite3 
+import sqlite3
 from planetlists import planet_cap,planet_lvl,transfer,temp,credit_per_hour,planet_cost,max_levels_planet
 import time
+import datetime
 import discord
 import discord.utils
 from discord.ext.commands import has_permissions
@@ -42,15 +43,15 @@ class Planet:
         return(self.types)
     def get_planet_tier(self):
         return(self.tier)
- 
+
 class Enter:
     async def get_input_of_type(func,ctx):
         channel = ctx.channel
         def check(m):
-            if m.content == 'Stop':
+            if (m.content == 'Stop') or (m.content == 'stop') or (m.content == 'STOP'):
                 raise AbortWait
             return m.content == m.content and m.channel == channel and m.author == ctx.author
-            
+
         while True:
             try:
                 msg = await client.wait_for('message', check=check)
@@ -58,22 +59,23 @@ class Enter:
             except ValueError:
                 return 'bad'
                 continue
-    
-    
+
+
 class Error(Exception):
     pass
 class AbortWait(Error):
     pass
 class NotFound(Error):
     pass
-    
+
 def singleData(tup):
     item = functools.reduce(operator.add,(tup))
     return item
-    
-    
 
-TOKEN = ''
+
+with open("token.txt", 'r') as token_reader:
+    TOKEN = token_reader.readlines()
+    TOKEN = TOKEN[0]
 
 client = commands.Bot(command_prefix='$')
 
@@ -87,7 +89,7 @@ client.remove_command('help')
 async def on_ready():
 
     global betauri
-    await client.change_presence(activity = discord.Game(name = 'Type ''$commands'' for a list of commands!'))
+    await client.change_presence(activity = discord.Game(name = 'Type ''$help'' for a list of commands!'))
     print(f"We have logged in as {client.user}")
 
 @client.command()
@@ -108,7 +110,7 @@ async def playeradd(ctx):
     serverId = ctx.guild.id
     guild= ctx.guild
     member = ctx.message.author
-    connection = sqlite3.connect("discordBot") 
+    connection = sqlite3.connect("discordBot")
     crsr = connection.cursor()
     '''
     role = discord.utils.get(ctx.guild.roles, name="WS1")
@@ -117,10 +119,10 @@ async def playeradd(ctx):
     crsr.execute("SELECT UserName FROM MEMBER")
     ans = crsr.fetchall()
     exsName = []
-    
+
     for i in ans:
         exsName.append(singleData(i))
-    
+
     if name in exsName:
         correct_in = False
         while correct_in == False:
@@ -128,7 +130,7 @@ async def playeradd(ctx):
             await channel.send('Would you like to edit your data (y/n):')
             await channel.send("to exit the program at any time, type... Stop")
             edit = await Enter.get_input_of_type(str,ctx)
-            edit.lower()
+            edit = edit.lower()
             if edit == 'y' or edit == 'Y':
                 await channel.send('Here is an example info sheet...')
                 await channel.send("```\nCharlie#3890\nBs: dual2,delta4,emp6,barrier2\nminer: enrich, remotemining,boost\ntrans: barrier2```--------------------------------------------------")
@@ -148,36 +150,47 @@ async def playeradd(ctx):
                 sup2 = await Enter.get_input_of_type(str,ctx)
 
                 crsr.execute("UPDATE MEMBER SET UserID = {}, BsLoadout = \'{}\', Support1 = \'{}\', Support2 = \'{}\', CorpID = {} WHERE UserName LIKE \'{}\' ".format(user,bs,sup1,sup2,serverId,name))
-                connection.commit() 
+                connection.commit()
                 connection.close()
-                
-                
+
+
                 role = discord.utils.get(ctx.guild.roles, name="WSready")
                 await member.add_roles(role)
-                
-                
+
+
                 await channel.send("Your entry has been recorded!")
                 correct_in = True
             elif edit == 'n' or edit == 'N':
                 break
             else:
                 correct_in = False
-                
+
     else:
-        await channel.send('Would you like to enter bs, trans,and miner data at this time? (type y or n)')
+        sql_command = ('''INSERT INTO MEMBER(UserID,UserName,CorpID,WsID,Banned) VALUES({}, \'{}\', {}, {}, {})'''.format(user,name,serverId, -1,0))
+        crsr.execute(sql_command)
+        connection.commit()
+        connection.close()
+
+
+        role = discord.utils.get(ctx.guild.roles, name="WSready")
+        await member.add_roles(role)
+
+
+        await channel.send("Your entry has been recorded!")
+        '''await channel.send('Would you like to enter bs, trans,and miner data at this time? (type y or n)')
         simple = await Enter.get_input_of_type(str,ctx)
-        simple.lower()
+        simple = simple.lower()
         if simple == 'n':
-            sql_command = ('''INSERT INTO MEMBER(UserID,UserName,CorpID,WsID,Banned) VALUES({}, \'{}\', {}, {}, {})'''.format(user,name,serverId, -1,0))
+            sql_command = (INSERT INTO MEMBER(UserID,UserName,CorpID,WsID,Banned) VALUES({}, \'{}\', {}, {}, {}).format(user,name,serverId, -1,0))
             crsr.execute(sql_command)
-            connection.commit() 
+            connection.commit()
             connection.close()
-            
-            
+
+
             role = discord.utils.get(ctx.guild.roles, name="WSready")
             await member.add_roles(role)
-            
-            
+
+
             await channel.send("Your entry has been recorded!")
         else:
             await channel.send('Here is an example info sheet...')
@@ -189,26 +202,26 @@ async def playeradd(ctx):
             time.sleep(.5)
             await channel.send('type bs mods, example...\nbs: battery10,delta4,tw1,barrier1')
             bs = await Enter.get_input_of_type(str,ctx)
-        
+
             await channel.send('type first support ship mods, example...')
             await channel.send('miner: tw1,genesis1')
             sup1 = await Enter.get_input_of_type(str,ctx)
-        
+
             await channel.send('type second support ship mods, example...')
             await channel.send('trans: tw1,dispatch1')
-            sup2 = await Enter.get_input_of_type(str,ctx) 
-            
-            sql_command = ('''INSERT INTO MEMBER VALUES({}, \'{}\', \'{}\', \'{}\', \'{}\', {}, {}, {})'''.format(user,name,bs,sup1,sup2,serverId, -1,0))
+            sup2 = await Enter.get_input_of_type(str,ctx)
+
+            sql_command = (INSERT INTO MEMBER VALUES({}, \'{}\', \'{}\', \'{}\', \'{}\', {}, {}, {}).format(user,name,bs,sup1,sup2,serverId, -1,0))
             crsr.execute(sql_command)
-            connection.commit() 
+            connection.commit()
             connection.close()
-            
-            
+
+
             role = discord.utils.get(ctx.guild.roles, name="WSready")
             await member.add_roles(role)
-            
-            
-            await channel.send("Your entry has been recorded!")
+
+
+            await channel.send("Your entry has been recorded!")'''
 
 #---------------------------------------------------------------------------------------------------------------------------
 
@@ -217,45 +230,46 @@ async def playeradd(ctx):
 async def register(ctx):
 
     channel = ctx.channel
-    connection = sqlite3.connect("discordBot") 
+    connection = sqlite3.connect("discordBot")
     crsr = connection.cursor()
     serverId = ctx.guild.id
     print(serverId)
     crsr.execute("SELECT CorpID FROM CORP")
     ans = crsr.fetchall()
     exsName = []
-    
+
     for i in ans:
         exsName.append(singleData(i))
-        
+
     print(exsName)
     if serverId in exsName:
         await channel.send('Your Corp is already registered with the bot')
         connection.close()
     else:
-        await channel.send('What is your Corp\'s name?')    
+        await channel.send('What is your Corp\'s name?')
         corpName = await Enter.get_input_of_type(str,ctx)
-        
+
         sql_command = ('''INSERT INTO CORP VALUES({}, \'{}\', {}, {}, {});'''.format(serverId, corpName, 'null',-1,-1))
         crsr.execute(sql_command)
-        connection.commit() 
+
+        connection.commit()
         connection.close()
-        
+
         guild = ctx.guild
         await guild.create_role(name="WSready")
         await guild.create_role(name="WS1")
         await guild.create_role(name="WS2")
-        
-        
+
+
         await channel.send('Your corp is registered with the bot!')
-    
+
 #---------------------------------------------------------------------------------------------------------------------------
-                
+
 @client.command()
 @has_permissions(manage_roles=True,ban_members=True)
 async def wsstart(ctx):
     channel = ctx.channel
-    connection = sqlite3.connect("discordBot") 
+    connection = sqlite3.connect("discordBot")
     crsr = connection.cursor()
     serverId = ctx.guild.id
     crsr.execute("SELECT WsID1 FROM CORP WHERE CorpID = {}".format(serverId))
@@ -268,52 +282,57 @@ async def wsstart(ctx):
     crsr.execute("SELECT UserName FROM MEMBER")
     ans = crsr.fetchall()
     exsName = []
-    
+
     for i in ans:
         exsName.append(singleData(i))
 
     if name in exsName:
         if wsCheck == -1:
-        
+
             crsr.execute('''INSERT INTO WS(NumInWs1,NumInWs2) VALUES({},{});'''.format(0,0))
-            
+
             crsr.execute("SELECT MAX(rowid) FROM WS")
             ans = crsr.fetchall()
             wsid1 = singleData(ans[0])
-            
+
             crsr.execute("UPDATE CORP SET WsID1 = {} WHERE CorpID LIKE \'{}\' ".format(wsid1,serverId))
-            
+
             crsr.execute('''INSERT INTO WS(NumInWs1,NumInWs2) VALUES({},{});'''.format(0,0))
-            
+
             crsr.execute("SELECT MAX(rowid) FROM WS")
             ans = crsr.fetchall()
             wsid2 = singleData(ans[0])
-            
+
             crsr.execute("UPDATE CORP SET WsID2 = {} WHERE CorpID LIKE \'{}\' ".format(wsid2,serverId))
-                  
+
             await channel.send('You have started a WS\n-------------------------------------------------\nReact to this msg with 1️⃣ or 2️⃣ to be added to the WS1 or WS2 list(unreact to remove yourself)\n-------------------------------------------------')
             time.sleep(.5)
+            msg = await channel.history(limit = 1).flatten()
+            msg = msg[0]
+            msg = msg.id
+            '''print(msg)
             msg = channel.last_message_id
+            print(msg)'''
             crsr.execute("UPDATE WS SET WsMSG = {} WHERE rowid LIKE \'{}\' ".format(msg,wsid1))
             crsr.execute("UPDATE WS SET WsMSG = {} WHERE rowid LIKE \'{}\' ".format(msg,wsid2))
         else:
             await channel.send('You still have an ongoing ws, please use $wsover and re-do this commmand')
     else:
         await channel.send('You are not registered with the bot, please do $playeradd and then start a ws')
-    
-    connection.commit() 
+
+    connection.commit()
     connection.close()
 
 #---------------------------------------------------------------------------------------------------------------------------
 
 @client.event
-    
-async def on_raw_reaction_add(payload): 
 
-    connection = sqlite3.connect("discordBot") 
+async def on_raw_reaction_add(payload):
+
+    connection = sqlite3.connect("discordBot")
     crsr = connection.cursor()
-        
-    guild_id = payload.guild_id 
+
+    guild_id = payload.guild_id
     guild = discord.utils.find(lambda g : g.id == guild_id, client.guilds)
     message_id = payload.message_id
     serverId = payload.guild_id
@@ -322,7 +341,7 @@ async def on_raw_reaction_add(payload):
     channel = client.get_channel(payload.channel_id)
     msg = 0
     ans = [0]
-    
+
     crsr.execute("SELECT WsMSG FROM WS as w, CORP as c WHERE w.rowid = c.WsID1 and c.CorpID = {}".format(serverId))
     ans = crsr.fetchall()
     for i in ans:
@@ -336,60 +355,60 @@ async def on_raw_reaction_add(payload):
             for i in ans:
                 currentWS = singleData(i)
             print(currentWS)
-            
+
             userCheck = ""
             crsr.execute("SELECT WsID FROM MEMBER WHERE UserID = {} ".format(user))
             ans = crsr.fetchall()
             for i in ans:
                 userCheck = singleData(i)
-            
+
             crsr.execute("SELECT Banned FROM MEMBER WHERE UserID= {} ".format(user))
             ans = crsr.fetchall()
             for i in ans:
                 banned = singleData(i)
-            
+
             crsr.execute("SELECT w.NumInWs1 FROM WS as w, CORP as c WHERE w.rowid = c.WsID1 and c.CorpID = {} ".format(serverId))
             ans = crsr.fetchall()
             for i in ans:
                 numIn = singleData(i)
-            
+
             msg = await channel.fetch_message(message_id)
             member = guild.get_member(user)
             if userCheck == currentWS:
                 await channel.send("{} is already entered into your corp's WS list, un-react to exit your corp's ws".format(name))
-                connection.commit() 
+                connection.commit()
                 connection.close()
             elif userCheck == "":
                 await msg.remove_reaction(payload.emoji.name, member)
                 await channel.send("You are not entered into the data base, please do $playeradd")
-                connection.commit() 
+                connection.commit()
                 connection.close()
             elif numIn > 15:
                 await msg.remove_reaction(payload.emoji.name, member)
                 await channel.send("Too many in WS1")
-                connection.commit() 
+                connection.commit()
                 connection.close()
             elif banned == 1:
                 await msg.remove_reaction(payload.emoji.name, member)
                 await channel.send("{} is banned from your corp's WS list".format(name))
-                connection.commit() 
+                connection.commit()
                 connection.close()
-            
+
             else:
                 crsr.execute("UPDATE MEMBER SET WsID = {} WHERE UserID = {}".format(currentWS, user ))
-            
+
                 crsr.execute("SELECT w.NumInWs1 FROM CORP as c, WS as w WHERE c.WsID1 = w.rowid AND c.CorpID = {} ".format(serverId))
                 ans = crsr.fetchall()
                 for i in ans:
                     num = singleData(i)
                 num+=1
-                
+
                 crsr.execute("UPDATE WS SET NumInWs1 = {} WHERE rowid = {}".format(num, currentWS ))
                 role = discord.utils.get(guild.roles, name="WS1")
                 await member.add_roles(role)
-                
+
                 await channel.send("{} is entered into your corp's WS list".format(name))
-                connection.commit() 
+                connection.commit()
                 connection.close()
         elif payload.emoji.name == '2️⃣':
             crsr.execute("SELECT WsID2 FROM CORP WHERE CorpID = {} ".format(serverId))
@@ -397,79 +416,79 @@ async def on_raw_reaction_add(payload):
             for i in ans:
                 currentWS = singleData(i)
             print(currentWS)
-            
+
             crsr.execute("SELECT WsID1 FROM CORP WHERE CorpID = {} ".format(serverId))
             ans = crsr.fetchall()
             for i in ans:
                 otherList = singleData(i)
-            
+
             userCheck = ""
             crsr.execute("SELECT WsID FROM MEMBER WHERE UserID = {} ".format(user))
             ans = crsr.fetchall()
             for i in ans:
                 userCheck = singleData(i)
-            
+
             crsr.execute("SELECT Banned FROM MEMBER WHERE UserID= {} ".format(user))
             ans = crsr.fetchall()
             for i in ans:
                 banned = singleData(i)
-                
+
             msg = await channel.fetch_message(message_id)
             member = guild.get_member(user)
-            
+
             if userCheck == currentWS:
                 await channel.send("{} is already entered into your corp's WS list, un-react to exit your corp's ws".format(name))
-                connection.commit() 
+                connection.commit()
                 connection.close()
             elif userCheck == "":
                 await msg.remove_reaction(payload.emoji.name, member)
                 await channel.send("You are not entered into the data base, please do $playeradd")
-                connection.commit() 
+                connection.commit()
                 connection.close()
             elif userCheck == otherList:
                 await msg.remove_reaction(payload.emoji.name, member)
                 await channel.send("{} is already in WS1 list".format(name))
-                connection.commit() 
+                connection.commit()
                 connection.close()
             elif banned == 1:
                 await msg.remove_reaction(payload.emoji.name, member)
                 await channel.send("{} is banned from your corp's WS list".format(name))
-                connection.commit() 
+                connection.commit()
                 connection.close()
-                
-            
+
+
             else:
                 crsr.execute("UPDATE MEMBER SET WsID = {} WHERE UserID = {}".format(currentWS, user ))
-            
+
                 crsr.execute("SELECT w.NumInWs2 FROM CORP as c, WS as w WHERE c.WsID2 = w.rowid AND c.CorpID = {} ".format(serverId))
                 ans = crsr.fetchall()
                 for i in ans:
                     num = singleData(i)
                 num+=1
-                
+
                 print(num)
                 crsr.execute("UPDATE WS SET NumInWs2 = {} WHERE rowid = {}".format(num, currentWS ))
-                
+
                 role = discord.utils.get(guild.roles, name="WS2")
                 await member.add_roles(role)
-                
+
                 await channel.send("{} is entered into your corp's WS list".format(name))
 
-                connection.commit() 
+                connection.commit()
                 connection.close()
         else:
-            connection.commit() 
+            connection.commit()
             connection.close()
     else:
-        connection.commit() 
+        connection.commit()
         connection.close()
 #---------------------------------------------------------------------------------------------------------------------------
 @client.event
 async def on_raw_reaction_remove(payload):
-    connection = sqlite3.connect("discordBot") 
+    connection = sqlite3.connect("discordBot")
     crsr = connection.cursor()
-        
-    guild_id = payload.guild_id 
+
+    guild_id = payload.guild_id
     guild = discord.utils.find(lambda g : g.id == guild_id, client.guilds)
     message_id = payload.message_id
     serverId = payload.guild_id
@@ -479,7 +498,7 @@ async def on_raw_reaction_remove(payload):
     msg = 0
     ans = [0]
     banned = 0
-    
+
     crsr.execute("SELECT WsMSG FROM WS as w, CORP as c WHERE w.rowid = c.WsID1 and c.CorpID = {}".format(serverId))
     ans = crsr.fetchall()
     for i in ans:
@@ -492,37 +511,37 @@ async def on_raw_reaction_remove(payload):
             ans = crsr.fetchall()
             for i in ans:
                 userCheck = singleData(i)
-            
+
             crsr.execute("SELECT WsID1 FROM CORP WHERE CorpID = {} ".format(serverId))
             ans = crsr.fetchall()
             for i in ans:
                 currentWS = singleData(i)
             print(currentWS)
-            
+
             crsr.execute("SELECT Banned FROM MEMBER WHERE UserID= {} ".format(user))
             ans = crsr.fetchall()
             for i in ans:
                 banned = singleData(i)
                 print(banned)
-                
+
             if banned == 1:
                 pass
-                
+
             elif userCheck == "":
                 pass
-            
+
             elif userCheck == -1:
                await channel.send("{} is already removed from your corp's WS list, react to enter your corp's WS".format(name))
-               
+
             else:
                 crsr.execute("UPDATE MEMBER SET WsID = {} WHERE UserID = {}".format(-1, user ))
-                
+
                 crsr.execute("SELECT w.NumInWs1 FROM CORP as c, WS as w WHERE c.WsID1 = w.rowid AND c.CorpID = {} ".format(serverId))
                 ans = crsr.fetchall()
                 for i in ans:
                     num = singleData(i)
                 num-=1
-                
+
                 crsr.execute("UPDATE WS SET NumInWs1 = {} WHERE rowid = {}".format(num, currentWS ))
                 member = guild.get_member(user)
                 role = discord.utils.get(guild.roles, name="WS1")
@@ -534,31 +553,31 @@ async def on_raw_reaction_remove(payload):
             ans = crsr.fetchall()
             for i in ans:
                 userCheck = singleData(i)
-            
+
             crsr.execute("SELECT WsID2 FROM CORP WHERE CorpID = {} ".format(serverId))
             ans = crsr.fetchall()
             for i in ans:
                 currentWS = singleData(i)
             print(currentWS)
-            
+
             crsr.execute("SELECT Banned FROM MEMBER WHERE UserID= {} ".format(user))
             ans = crsr.fetchall()
             for i in ans:
                 banned = singleData(i)
                 print(banned)
-                
+
             if banned == 1:
                 pass
-                
+
             elif userCheck == "":
                 pass
-            
+
             elif userCheck == -1:
                await channel.send("{} is already removed from your corp's WS list, react to enter your corp's WS".format(name))
-               
+
             else:
                 crsr.execute("UPDATE MEMBER SET WsID = {} WHERE UserID = {}".format(-1, user ))
-                
+
                 crsr.execute("SELECT w.NumInWs2 FROM CORP as c, WS as w WHERE c.WsID2 = w.rowid AND c.CorpID = {} ".format(serverId))
                 ans = crsr.fetchall()
                 for i in ans:
@@ -569,29 +588,29 @@ async def on_raw_reaction_remove(payload):
                 member = guild.get_member(user)
                 role = discord.utils.get(guild.roles, name="WS2")
                 await member.remove_roles(role)
-                await channel.send("{} is removed from your corp's WS list".format(name))   
-        connection.commit() 
+                await channel.send("{} is removed from your corp's WS list".format(name))
+        connection.commit()
         connection.close()
-            
-            
-            
-#---------------------------------------------------------------------------------------------------------------------------            
+
+
+
+#---------------------------------------------------------------------------------------------------------------------------
 @client.command()
 @has_permissions(manage_roles=True,ban_members=True)
 async def wsover(ctx, WS):
     WS = int(WS)
-    
+
     guild= ctx.guild
-    
+    '''
     role = discord.utils.get(guild.roles, name="WS1")
     await member.remove_roles(role)
+    '''
 
-                
     channel = ctx.channel
-    connection = sqlite3.connect("discordBot") 
+    connection = sqlite3.connect("discordBot")
     crsr = connection.cursor()
     serverId = ctx.guild.id
-    
+
     crsr.execute("SELECT WsID1 FROM CORP WHERE CorpID = {}".format(serverId))
     ans = crsr.fetchall()
     wsCheck1 = singleData(ans[0])
@@ -607,21 +626,22 @@ async def wsover(ctx, WS):
         member.append(singleData(i))
 
     member1 = []
+    print(member)
     for i in member:
-        member1.append(guild.get_member(member[i]))
-    
-    
+        member1.append(guild.get_member(i))
+
+
     crsr.execute("SELECT WsMSG FROM WS as w, CORP as c WHERE w.rowid = c.WsID1 and c.CorpID = {}".format(serverId))
     ans = crsr.fetchall()
     message = singleData(ans[0])
 
-    crsr.execute("SELECT UserID FROM CORP WHERE CorpID = {}".format(serverId))
+    crsr.execute("SELECT UserID FROM MEMBER WHERE CorpID = {}".format(serverId))
     ans = crsr.fetchall()
     wsCheck1 = singleData(ans[0])
-    
-    
+
+
     if wsCheck1 != -1 and WS == 1:
-        crsr.execute("UPDATE CORP SET WsID1 = {} WHERE CorpID = {}".format(-1,serverId))       
+        crsr.execute("UPDATE CORP SET WsID1 = {} WHERE CorpID = {}".format(-1,serverId))
         crsr.execute("UPDATE MEMBER SET WsID = {} WHERE CorpID = {} AND WsID == {}".format(-1,serverId,wsCheck1))
         try:
             msg = await channel.fetch_message(message)
@@ -632,7 +652,9 @@ async def wsover(ctx, WS):
             print("cannont find msg")
         finally:
             await channel.send("Your WS1 is terminated")
-            connection.commit() 
+            for i in member1:
+                await i.remove_roles("WS1")
+            connection.commit()
             connection.close()
 
     elif wsCheck2 != -1 and WS == 2:
@@ -646,11 +668,13 @@ async def wsover(ctx, WS):
         except discord.errors.NotFound:
             print("cannont find msg")
         finally:
+            for i in member1:
+                await i.remove_roles("WS1")
             await channel.send("Your WS2 is terminated")
-            connection.commit() 
+            connection.commit()
             connection.close()
     elif WS == 0 or WS == None :
-        crsr.execute("UPDATE CORP SET WsID1 = {} WHERE CorpID = {}".format(-1,serverId))  
+        crsr.execute("UPDATE CORP SET WsID1 = {} WHERE CorpID = {}".format(-1,serverId))
         crsr.execute("UPDATE CORP SET WsID2 = {} WHERE CorpID = {}".format(-1,serverId))
         crsr.execute("UPDATE MEMBER SET WsID = {} WHERE CorpID = {} AND (WsID = {} OR WsID = {})".format(-1,serverId,wsCheck1,wsCheck2))
         try:
@@ -661,29 +685,31 @@ async def wsover(ctx, WS):
         except discord.errors.NotFound:
             print("cannont find msg")
         finally:
+            for i in member1:
+                await i.remove_roles("WS1")
             await channel.send("Your WS is terminated")
-            connection.commit() 
-            connection.close() 
+            connection.commit()
+            connection.close()
     else:
         print(wsCheck1)
         await channel.send("Your corp dosen't have an active ws on file, do $wsstart to start one")
-        connection.commit() 
+        connection.commit()
         connection.close()
 
-   
+
 #---------------------------------------------------------------------------------------------------------------------------
-                
+
 @client.command()
 @has_permissions(manage_roles=True)
 async def wslist1(ctx):
-    channel = ctx.channel    
-    
+    channel = ctx.channel
+
     with open('ws.txt', 'w') as a_writer:
         pass
-    connection = sqlite3.connect("discordBot") 
+    connection = sqlite3.connect("discordBot")
     crsr = connection.cursor()
     serverId = ctx.guild.id
-    
+
     crsr.execute("SELECT UserName FROM MEMBER WHERE CorpID = {}".format(serverId))
     ans = crsr.fetchall()
     userIds= []
@@ -702,20 +728,20 @@ async def wslist1(ctx):
     for i in ans:
         userInOut.append(singleData(i))
     print(userInOut)
-    
+
     check = 0
     crsr.execute("SELECT count(UserName) FROM MEMBER WHERE CorpID = {} AND WsID != -1".format(serverId))
     ans = crsr.fetchall()
     for i in ans:
         check = singleData(i)
-        
+
     if check == 0:
         await channel.send('There is no one signed up...')
     else:
         await channel.send('Here is the ws1 list as of right now...')
 
         inWs = 0
-        
+
         for i, item in enumerate(userIds):
             if i == 0:
                with open('ws.txt', 'w') as a_writer:
@@ -730,16 +756,18 @@ async def wslist1(ctx):
                         a_writer.write("\n")
                         a_writer.write("{}{}".format(userIds[i], ':white_check_mark:' ))
                         inWs += 1
-        
+
         with open('ws.txt', 'r') as reader:
             await channel.send(reader.read())
-            
+
         crsr.execute("SELECT w.NumInWs1 FROM CORP as c, WS as w WHERE c.WsID1 = w.rowid AND c.CorpID = {} ".format(serverId))
         ans = crsr.fetchall()
         for i in ans:
             num = singleData(i)
-                
-        if num < 5:
+
+        if num == 4:
+            await channel.send('You are {} person away from a 5v5'.format(5-num))
+        elif num < 5:
             await channel.send('You are {} people away from a 5v5'.format(5-num))
         elif 5 <= num <10:
             await channel.send('You are {} people away from a 10v10'.format(10-num))
@@ -747,22 +775,22 @@ async def wslist1(ctx):
             await channel.send('You are {} people away from a 15v15'.format(15-num))
         else:
             await channel.send('You have {} members signed up'.format(num))
-    connection.commit() 
+    connection.commit()
     connection.close()
-    
+
 #---------------------------------------------------------------------------------------------------------------------------
-                
+
 @client.command()
 @has_permissions(manage_roles=True)
 async def wslist2(ctx):
-    channel = ctx.channel    
-    
+    channel = ctx.channel
+
     with open('ws.txt', 'w') as a_writer:
         pass
-    connection = sqlite3.connect("discordBot") 
+    connection = sqlite3.connect("discordBot")
     crsr = connection.cursor()
     serverId = ctx.guild.id
-    
+
     crsr.execute("SELECT UserName FROM MEMBER WHERE CorpID = {}".format(serverId))
     ans = crsr.fetchall()
     userIds= []
@@ -781,20 +809,20 @@ async def wslist2(ctx):
     for i in ans:
         userInOut.append(singleData(i))
     print(userInOut)
-    
+
     check = 0
     crsr.execute("SELECT count(UserName) FROM MEMBER WHERE CorpID = {} AND WsID != -1".format(serverId))
     ans = crsr.fetchall()
     for i in ans:
         check = singleData(i)
-        
+
     if check == 0:
         await channel.send('There is no one signed up...')
     else:
         await channel.send('Here is the ws2 list as of right now...')
 
         inWs = 0
-        
+
         for i, item in enumerate(userIds):
             if i == 0:
                with open('ws.txt', 'w') as a_writer:
@@ -809,15 +837,15 @@ async def wslist2(ctx):
                         a_writer.write("\n")
                         a_writer.write("{}{}".format(userIds[i], ':white_check_mark:' ))
                         inWs += 1
-        
+
         with open('ws.txt', 'r') as reader:
             await channel.send(reader.read())
-            
+
         crsr.execute("SELECT w.NumInWs2 FROM CORP as c, WS as w WHERE c.WsID2 = w.rowid AND c.CorpID = {} ".format(serverId))
         ans = crsr.fetchall()
         for i in ans:
             num = singleData(i)
-                
+
         if num < 5:
             await channel.send('You are {} people away from a 5v5'.format(5-num))
         elif 5 <= num <10:
@@ -826,44 +854,44 @@ async def wslist2(ctx):
             await channel.send('You are {} people away from a 15v15'.format(15-num))
         else:
             await channel.send('You have {} members signed up'.format(num))
-    connection.commit() 
+    connection.commit()
     connection.close()
-    
+
 #---------------------------------------------------------------------------------------------------------------------------
-                
+
 @client.command()
 @has_permissions(manage_roles=True,ban_members = True)
 async def players(ctx):
-    channel = ctx.channel    
-    connection = sqlite3.connect("discordBot") 
+    channel = ctx.channel
+    connection = sqlite3.connect("discordBot")
     crsr = connection.cursor()
     serverId = ctx.guild.id
-    
+
     crsr.execute("SELECT UserName FROM MEMBER WHERE CorpID = {}".format(serverId))
     ans = crsr.fetchall()
     userIds= []
     for i in ans:
     	userIds.append(singleData(i))
-    	
+
     crsr.execute("SELECT BsLoadout FROM MEMBER WHERE CorpID = {}".format(serverId))
     ans = crsr.fetchall()
     bs = []
     for i in ans:
     	bs.append(singleData(i))
-    	
+
     crsr.execute("SELECT Support1 FROM MEMBER WHERE CorpID = {}".format(serverId))
     ans = crsr.fetchall()
     sup1= []
     for i in ans:
     	sup1.append(singleData(i))
-    
+
     crsr.execute("SELECT Support2 FROM MEMBER WHERE CorpID = {}".format(serverId))
     ans = crsr.fetchall()
     sup2= []
     for i in ans:
     	sup2.append(singleData(i))
-    
-    await channel.send('Here is the ws list as of right now...')
+
+    await channel.send('Here is the corp members list as of right now...')
     await channel.send('name:          |bs:                          |suport1:                        |suport2           ')
     await channel.send('---------------------------------------------------------------------------------------')
 
@@ -889,7 +917,7 @@ async def players(ctx):
                         a_writer.write("--------------------------------------------------")
         with open('ws.txt', 'r') as reader:
             await channel.send(reader.read())
-    connection.commit() 
+    connection.commit()
     connection.close()
 
 #----------------------------------------------------------------------------------------------------------------------------
@@ -897,28 +925,28 @@ async def players(ctx):
 @client.command()
 @has_permissions(administrator = True)
 async def delete(ctx):
-    channel = ctx.channel    
-    
-    connection = sqlite3.connect("discordBot") 
+    channel = ctx.channel
+
+    connection = sqlite3.connect("discordBot")
     crsr = connection.cursor()
     serverId = ctx.guild.id
-    
+
     crsr.execute("SELECT UserID FROM MEMBER WHERE CorpID = {}".format(serverId))
     ans = crsr.fetchall()
     userIds= []
     for i in ans:
     	userIds.append(singleData(i))
-    
+
     print(userIds)
     crsr.execute("SELECT UserName FROM MEMBER WHERE CorpID = {}".format(serverId))
     ans = crsr.fetchall()
     userName= []
     for i in ans:
     	userName.append(singleData(i))
-    
+
     await channel.send("If the user is still in the discord server type y, if not type n")
     answer = await Enter.get_input_of_type(str,ctx)
-    answer.lower()
+    answer = answer.lower()
 
     if answer == 'y':
         await channel.send("What username do you wish to delete (ping the person to get correct name) : ")
@@ -929,11 +957,11 @@ async def delete(ctx):
         user_name = user_name.replace(">","")
         user_name = int(user_name)
         if user_name in userIds:
-                
+
             crsr.execute("DELETE FROM MEMBER WHERE UserID = {}".format(user_name))
-            connection.commit() 
+            connection.commit()
             await channel.send('User has been deleted')
-                
+
         else:
             await channel.send("The bot failed to find a user, their id might have changed. try again but go down the ""n"" path")
     else:
@@ -942,77 +970,106 @@ async def delete(ctx):
         print(user_name)
         user_name = "@" + user_name
         if user_name in userName:
-            
+
                 crsr.execute("DELETE FROM MEMBER WHERE UserName = \'{}\'".format(user_name))
                 await channel.send('User has been deleted')
-                
+
         else:
                 await channel.send("The bot failed to find a user, their id might have changed or there is a bug...")
-    connection.commit() 
+    connection.commit()
     connection.close()
-    
+
 #---------------------------------------------------------------------------------------------------------------------------
-    
+
 @client.command()
 @has_permissions(ban_members = True)
 async def ban(ctx, user_name):
     channel = ctx.channel
-    
-    connection = sqlite3.connect("discordBot") 
+
+    connection = sqlite3.connect("discordBot")
     crsr = connection.cursor()
     serverId = ctx.guild.id
     user_name = user_name.replace("<@!","")
     user_name = user_name.replace("<@","")
     user_name = user_name.replace(">","")
     user_name = int(user_name)
-    
+
     print(user_name)
-    
+
     crsr.execute("SELECT UserID FROM MEMBER WHERE CorpID = {}".format(serverId))
     ans = crsr.fetchall()
     userIds= []
     for i in ans:
     	userIds.append(singleData(i))
-    
+
     if user_name in userIds:
         crsr.execute("UPDATE MEMBER SET Banned = {} WHERE UserID = {}".format(1,user_name))
         await channel.send("User banned from entering a WS roster")
     else:
         await channel.send("You pinged the wrong person or they are not registered under your server")
-    connection.commit() 
+    connection.commit()
     connection.close()
-    
+
 #---------------------------------------------------------------------------------------------------------------------------
-    
+
 @client.command()
 @has_permissions(ban_members=True)
 async def unban(ctx, user_name):
     channel = ctx.channel
-    
-    connection = sqlite3.connect("discordBot") 
+
+    connection = sqlite3.connect("discordBot")
     crsr = connection.cursor()
     serverId = ctx.guild.id
     user_name = user_name.replace("<@!","")
     user_name = user_name.replace("<@","")
     user_name = user_name.replace(">","")
     user_name = int(user_name)
-    
+
     print(user_name)
-    
+
     crsr.execute("SELECT UserID FROM MEMBER WHERE CorpID = {}".format(serverId))
     ans = crsr.fetchall()
     userIds= []
     for i in ans:
     	userIds.append(singleData(i))
-    
+
     if user_name in userIds:
         crsr.execute("UPDATE MEMBER SET Banned = {} WHERE UserID = {}".format(0,user_name))
         await channel.send("User un-banned from entering a WS roster")
     else:
         await channel.send("You pinged the wrong person or they are not registered under your server")
-    connection.commit() 
+    connection.commit()
     connection.close()
-#---------------------------------------------------------------------------------------------------------------------------    
+
+#---------------------------------------------------------------------------------------------------------------------------
+@client.command()
+@has_permissions(ban_members=True)
+async def wssaveplan(ctx):
+    channel = ctx.channel
+    await channel.send("awaitng WS plan, please send image in chat")
+    msg = await client.wait_for('message')
+    url = msg.attachments[0].url
+    user = str(ctx.message.author.id)
+    name ='@' + str(ctx.message.author)
+    now = datetime.datetime.now()
+    with open("battleplan.txt", "w") as f:
+        f.write(url + "\n")
+        f.write(name+ "\n")
+        f.write(str(now.strftime("%Y-%m-%d %H:%M")))
+
+#---------------------------------------------------------------------------------------------------------------------------
+@client.command()
+@has_permissions(ban_members=True)
+async def wsplan(ctx):
+    channel = ctx.channel
+
+    with open("battleplan.txt", "r") as f:
+        data = f.readlines()
+    data[1] = data[1].strip("\n")
+    await channel.send("{} added this plan at {}\n{}".format(data[1],data[2],data[0]))
+
+
+#---------------------------------------------------------------------------------------------------------------------------
 @client.command()
 async def planetcap(ctx):
     channel = ctx.channel
@@ -1302,9 +1359,9 @@ async def planetcap(ctx):
 async def help(ctx):
     await ctx.send('Here is a list of Betauri commands')
     await ctx.send('----------------------------------')
-    await ctx.send('```$register   -registers your corp/server with the bot\n$playeradd   -add yourself to your corp and enter your builds for next ws\n$delete   -removes a player from the bot\n$wslist1 & $wslis2   -a list of who is ws and who isnt\n$players   -lists who is in ws and their builds\n$wsstart   -starts a new ws for your server\n$wsover   - wipes the ws roster and stops the active ws on your server\n$ban   - bans a player from entering a WS roster\n$unban   - un-bans a player from entering a WS roster\n-----------------------------------------------------\n$greet   -a simple way to see if the bot is working\n$planetcap   -can calculate what planets you need to upgrade to meet a certain credit cap```')
+    await ctx.send('```$register   -registers your corp/server with the bot\n$playeradd   -add yourself to your corp and enter your builds for next ws\n$delete   -removes a player from the bot\n$wslist1 & $wslis2   -a list of who is ws and who isnt\n$players   -lists who is in ws and their builds\n$wsstart   -starts a new ws for your server\n$wsover (1 or 2)   - wipes the ws roster and stops the active ws on your server\n$ban   - bans a player from entering a WS roster\n$unban   - un-bans a player from entering a WS roster\nwssaveplan   -saves image for wsplans\nwsplan   -shows ws plan that is saved\n-----------------------------------------------------\n$greet   -a simple way to see if the bot is working\n$planetcap   -can calculate what planets you need to upgrade to meet a certain credit cap```')
     await ctx.send("-----------------------------------------------")
-    await ctx.send("```Starting a WS...\nMake sure your corp is registered with $register\nThen do $wsstart to start a ws\nyour players should now be able to react to the msg to enter or exit ws\nWhen the WS is over, do $wsover to stop the bots current ws for your server and repeat the proccess```")
-    
-    
+    await ctx.send("```Starting a WS...\nMake sure your corp is registered with $register and players are registerd with $playeradd\nThen do $wsstart to start a ws\nyour players should now be able to react to the msg to enter or exit ws\nWhen the WS is over, do $wsover (1 or 2) to stop the bots current ws for your server and repeat the proccess```")
+
+
 client.run(TOKEN)
